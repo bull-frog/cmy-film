@@ -1,0 +1,148 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>CMY分解</title>
+	<meta charset="UTF-8">
+	<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+	<link rel="manifest" href="./site.webmanifest">
+	<link rel="mask-icon" href="./safari-pinned-tab.svg" color="#5bbad5">
+	<meta name="msapplication-TileColor" content="#da532c">
+	<meta name="theme-color" content="#ffffff">
+	<style type="text/css">
+		body {
+			max-width: 600px;
+			overflow-wrap: break-word;
+			margin: auto;
+		}
+
+		canvas {
+			border: 1px solid black;
+			width: 80%;
+		}
+	</style>
+</head>
+<body>
+
+	<h1>CMY分解</h1>
+	
+	<h3>① 画像の選択</h3>
+	<p>分解したいカラー画像を選択します。透過部分は白塗りになります。</p>
+	<p><input id="form" type="file" accept="image/*"></p>
+	<div>
+		<canvas id="input"></canvas>
+	</div>
+	
+	<h3>② カラー画像の出力</h3>
+	<p>C, M, Y それぞれ出力されるので、OHPフィルムに印刷して重ねて見ます。上から C → M → Y の順に重ねるときれいに見えます。</p>
+	<p>※ 画像は右クリックでダウンロードできます。</p>
+	<div>
+		<canvas id="output1"></canvas>
+	</div>
+	<div>
+		<canvas id="output2"></canvas>
+	</div>
+	<div>
+		<canvas id="output3"></canvas>
+	</div>
+	
+	<footer>
+		&copy; Bossan
+	</footer>
+
+	<script>
+
+		// 画像のサイズ
+		let width, height;
+
+		// 画像が選択されたときの処理
+		document.querySelector("#form").addEventListener("change", (event) => {
+			let reader = new FileReader();
+			let image = new Image();
+			reader.onload = function () {
+				image.src = reader.result;
+			};
+			image.onload = function () {
+				width = image.width;
+				height = image.height;
+
+				// プレビュー
+				let inputCanvas = document.querySelector("#input");
+				inputCanvas.width = width;
+				inputCanvas.height = height;
+				let inputCtx = inputCanvas.getContext("2d");
+				inputCtx.fillStyle = "white";
+				inputCtx.fillRect(0, 0, width, height);
+				inputCtx.drawImage(image, 0, 0);
+
+				// CMY分解を実行
+				splitCMY(inputCtx);
+			};
+			reader.readAsDataURL(event.target.files[0]);
+		});
+
+		function splitCMY(inputCtx) {
+
+			let inputData = inputCtx.getImageData(0, 0, width, height);
+
+			// 出力はあらかじめ白塗りにしておく
+			let outputCanvases = [document.querySelector("#output1"), document.querySelector("#output2"), document.querySelector("#output3")];
+			let outputContexts = outputCanvases.map(canvas => {
+				// 出力canvasのサイズを設定
+				canvas.width = width;
+				canvas.height = height;
+				// 出力canvasを白く塗りつぶして返す
+				let context = canvas.getContext("2d");
+				context.fillStyle = "white";
+				context.fillRect(0, 0, width, height);
+				return context;
+			});
+			let outputDataArrays = outputContexts.map(context => context.getImageData(0, 0, width, height));
+
+			// color = 0(cyan), 1(magenta), 2(yellow) ごとに成分抽出して出力
+			for (let color = 0; color < 3; color++) {
+				let outputData = outputDataArrays[color];
+				for (let i = 0; i < inputData.data.length; i += 4) {
+					// 0(cyan = w - r), 1(magenta = w - g), 2(yellow = w - b) の成分の強さを抜き出す
+					let a = 255 - inputData.data[i + color];
+					outputData.data[i + color] = 0;
+					outputData.data[i + 3] = a;
+				}
+				outputContexts[color].putImageData(outputData, 0, 0);
+			}
+
+		}
+
+		// function onFileSelect(file) {
+
+		// 	let image = new Image();
+		// 	image.onload = function () {
+				
+		// 		input.drawImage(image, 0, 0, 4160, 2048);
+		// 		let pixelData = input.getImageData(0, 0, 4160, 2048);
+
+		// 		for (let i = 0; i < pixelData.data.length; i += 4) {
+
+		// 			// let cyan = 255 - pixelData.data[i];
+		// 			// let magenta = 255 - pixelData.data[i+1];
+		// 			let yellow = 255 - pixelData.data[i+2];
+
+		// 			// let op = 255 - pixelData.data[i];
+					
+		// 			pixelData.data[i] = 255;
+		// 			pixelData.data[i + 1] = 255;
+		// 			pixelData.data[i + 2] = 0;
+		// 			pixelData.data[i + 3] = yellow;
+
+		// 		}
+
+		// 		output.putImageData(pixelData, 0, 0);
+		// 	};
+		// 	image.src = window.URL.createObjectURL(file);
+		// };
+
+	</script>
+</body>
+
+</html>
